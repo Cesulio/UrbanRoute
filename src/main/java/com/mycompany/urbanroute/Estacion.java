@@ -9,5 +9,17 @@ package com.mycompany.urbanroute;
  * @author hluis
  */
 public class Estacion {
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
