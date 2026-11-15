@@ -1,135 +1,117 @@
-
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package com.mycompany.urbanroute;
 
+/**
+ *
+ * @author hluis
+ */
 public class GrafoRed {
+    
+    public static class Arista {
+        String destinoId;
+        int pesoMinutos;
 
-    private Estacion[] estaciones;
-    private double[][] matriz;
-    private int cantidad;
+        public Arista(String destinoId, int pesoMinutos) {
+            this.destinoId = destinoId;
+            this.pesoMinutos = pesoMinutos;
+        }
+    }
+
+    private TablaHashEstaciones estaciones;
+    private Lista<String> listaIdsEstaciones;
+    private TablaHashEstacionesAdyacencia adyacencias;
 
     public GrafoRed() {
-        estaciones = new Estacion[10];
-        matriz = new double[10][10];
-        cantidad = 0;
-        inicializarMatriz();
+        estaciones = new TablaHashEstaciones();
+        listaIdsEstaciones = new Lista<>();
+        adyacencias = new TablaHashEstacionesAdyacencia();
     }
 
-    private void inicializarMatriz() {
-        for (int i = 0; i < matriz.length; i++) {
-            for (int j = 0; j < matriz.length; j++) {
-                matriz[i][j] = Double.POSITIVE_INFINITY;
-            }
+    public void agregarEstacion(Estacion estacion) {
+        estaciones.insertar(estacion.getid(), estacion);
+        if (!listaIdsEstaciones.contiene(estacion.getid())) {
+            listaIdsEstaciones.insertar(estacion.getid());
         }
     }
 
-    private void ampliarCapacidad() {
-        int nuevaCapacidad = estaciones.length * 2;
-        Estacion[] nuevasEstaciones = new Estacion[nuevaCapacidad];
-        double[][] nuevaMatriz = new double[nuevaCapacidad][nuevaCapacidad];
-
-        for (int i = 0; i < nuevaCapacidad; i++) {
-            for (int j = 0; j < nuevaCapacidad; j++) {
-                nuevaMatriz[i][j] = Double.POSITIVE_INFINITY;
-            }
-        }
-
-        for (int i = 0; i < cantidad; i++) {
-            nuevasEstaciones[i] = estaciones[i];
-
-            for (int j = 0; j < cantidad; j++) {
-                nuevaMatriz[i][j] = matriz[i][j];
-            }
-        }
-
-        estaciones = nuevasEstaciones;
-        matriz = nuevaMatriz;
+    public void agregarConexion(String origenId, String destinoId, int peso) {
+        adyacencias.agregarArista(origenId, new Arista(destinoId, peso));
+        adyacencias.agregarArista(destinoId, new Arista(origenId, peso));
     }
 
-    public boolean agregarEstacion(Estacion estacion) {
-        if (estacion == null || buscarIndice(estacion.getId()) != -1) {
-            return false;
-        }
-
-        if (cantidad == estaciones.length) {
-            ampliarCapacidad();
-        }
-
-        estaciones[cantidad] = estacion;
-        cantidad++;
-        return true;
+    public Estacion obtenerEstacion(String id) {
+        return estaciones.buscar(id);
     }
 
-    public boolean agregarRuta(String origen, String destino, double peso) {
-        int i = buscarIndice(origen);
-        int j = buscarIndice(destino);
-
-        if (i == -1 || j == -1 || peso < 0 || i == j) {
-            return false;
-        }
-
-        matriz[i][j] = peso;
-        return true;
+    public Lista<String> getIdsEstaciones() {
+        return listaIdsEstaciones;
     }
 
-    public int buscarIndice(String id) {
-        if (id == null) {
-            return -1;
-        }
+    public Lista<Arista> obtenerAdyacentes(String id) {
+        return adyacencias.obtenerAristas(id);
+    }
 
-        for (int i = 0; i < cantidad; i++) {
-            if (estaciones[i].getId().equals(id)) {
-                return i;
+    private static class TablaHashEstacionesAdyacencia {
+        private Lista<EntradaAdyacencia>[] tabla;
+
+        private static class EntradaAdyacencia {
+            String id;
+            Lista<Arista> aristas;
+            public EntradaAdyacencia(String id) {
+                this.id = id;
+                this.aristas = new Lista<>();
             }
         }
 
-        return -1;
-    }
-
-    public Estacion buscarEstacion(String id) {
-        int indice = buscarIndice(id);
-        return indice == -1 ? null : estaciones[indice];
-    }
-
-    public Estacion getEstacion(int indice) {
-        if (indice < 0 || indice >= cantidad) {
-            return null;
+        @SuppressWarnings("unchecked")
+        public TablaHashEstacionesAdyacencia() {
+            tabla = new Lista[53];
+            for (int i = 0; i < 53; i++) tabla[i] = new Lista<>();
         }
 
-        return estaciones[indice];
-    }
-
-    public double getPeso(int origen, int destino) {
-        if (origen < 0 || origen >= cantidad
-                || destino < 0 || destino >= cantidad) {
-            return Double.POSITIVE_INFINITY;
+        private int hash(String clave) {
+            return Math.abs(clave.hashCode()) % tabla.length;
         }
 
-        return matriz[origen][destino];
-    }
-
-    public int getCantidad() {
-        return cantidad;
-    }
-
-    public Estacion[] obtenerEstaciones() {
-        Estacion[] resultado = new Estacion[cantidad];
-
-        for (int i = 0; i < cantidad; i++) {
-            resultado[i] = estaciones[i];
-        }
-
-        return resultado;
-    }
-
-    public double[][] obtenerMatriz() {
-        double[][] copia = new double[cantidad][cantidad];
-
-        for (int i = 0; i < cantidad; i++) {
-            for (int j = 0; j < cantidad; j++) {
-                copia[i][j] = matriz[i][j];
+        public void agregarArista(String id, Arista arista) {
+            int idx = hash(id);
+            Lista<EntradaAdyacencia> bucket = tabla[idx];
+            Nodo<EntradaAdyacencia> actual = bucket.getCabeza();
+            EntradaAdyacencia entrada = null;
+            while (actual != null) {
+                if (actual.getDato().id.equals(id)) {
+                    entrada = actual.getDato();
+                    break;
+                }
+                actual = actual.getSiguiente();
             }
+            if (entrada == null) {
+                entrada = new EntradaAdyacencia(id);
+                bucket.insertar(entrada);
+            }
+            
+            Nodo<Arista> aAct = entrada.aristas.getCabeza();
+            while (aAct != null) {
+                if (aAct.getDato().destinoId.equals(arista.destinoId)) return;
+                aAct = aAct.getSiguiente();
+            }
+            entrada.aristas.insertar(arista);
         }
 
-        return copia;
+        public Lista<Arista> obtenerAristas(String id) {
+            int idx = hash(id);
+            Lista<EntradaAdyacencia> bucket = tabla[idx];
+            Nodo<EntradaAdyacencia> actual = bucket.getCabeza();
+            while (actual != null) {
+                if (actual.getDato().id.equals(id)) {
+                    return actual.getDato().aristas;
+                }
+                actual = actual.getSiguiente();
+            }
+            return new Lista<>();
+        }
     }
 }
