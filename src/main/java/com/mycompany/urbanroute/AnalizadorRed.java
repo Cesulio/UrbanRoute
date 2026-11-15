@@ -1,180 +1,163 @@
-
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package com.mycompany.urbanroute;
 
+/**
+ *
+ * @author hluis
+ */
 public class AnalizadorRed {
+    /**
+     * Identifica componentes conexos (subredes) usando BFS.
+     */
+    public static Lista<Lista<String>> detectarSubredes(GrafoRed grafo) {
+        Lista<Lista<String>> subredes = new Lista<>();
+        Lista<String> ids = grafo.getIdsEstaciones();
+        TablaHashEstaciones visitados = new TablaHashEstaciones();
 
-    private GrafoRed grafo;
+        for (int i = 0; i < ids.getTamano(); i++) {
+            String idActual = ids.obtener(i);
+            if (visitados.buscar(idActual) == null) {
+                Lista<String> componente = new Lista<>();
+                Cola<String> cola = new Cola<>();
 
-    public AnalizadorRed(GrafoRed grafo) {
-        this.grafo = grafo;
-    }
+                cola.encolar(idActual);
+                visitados.insertar(idActual, grafo.obtenerEstacion(idActual));
 
-    public String[] recorridoBFS(String idInicio) {
-        int inicio = grafo.buscarIndice(idInicio);
-        int n = grafo.getCantidad();
+                while (!cola.estaVacia()) {
+                    String actual = cola.desencolar();
+                    componente.insertar(actual);
 
-        if (inicio == -1) {
-            return new String[0];
-        }
-
-        boolean[] visitado = new boolean[n];
-        int[] cola = new int[n];
-        String[] resultado = new String[n];
-
-        int frente = 0;
-        int fin = 0;
-        int posicion = 0;
-
-        cola[fin++] = inicio;
-        visitado[inicio] = true;
-
-        while (frente < fin) {
-            int actual = cola[frente++];
-            resultado[posicion++] = grafo.getEstacion(actual).getNombre();
-
-            for (int i = 0; i < n; i++) {
-                if (grafo.getPeso(actual, i) != Double.POSITIVE_INFINITY
-                        && !visitado[i]) {
-                    visitado[i] = true;
-                    cola[fin++] = i;
+                    Lista<GrafoRed.Arista> adyacentes = grafo.obtenerAdyacentes(actual);
+                    Nodo<GrafoRed.Arista> aNode = adyacentes.getCabeza();
+                    while (aNode != null) {
+                        String vecino = aNode.getDato().destinoId;
+                        if (visitados.buscar(vecino) == null) {
+                            visitados.insertar(vecino, grafo.obtenerEstacion(vecino));
+                            cola.encolar(vecino);
+                        }
+                        aNode = aNode.getSiguiente();
+                    }
                 }
+                subredes.insertar(componente);
             }
         }
-
-        return copiarResultado(resultado, posicion);
+        return subredes;
     }
 
-    public String[] recorridoDFS(String idInicio) {
-        int inicio = grafo.buscarIndice(idInicio);
-        int n = grafo.getCantidad();
+    /**
+     * Identifica los Hubs de transferencia basándose en la Centralidad de Grado.
+     */
+    public static String identificarHubPrincipal(GrafoRed grafo) {
+        Lista<String> ids = grafo.getIdsEstaciones();
+        String maxHub = "";
+        int maxConexiones = -1;
 
-        if (inicio == -1) {
-            return new String[0];
+        for (int i = 0; i < ids.getTamano(); i++) {
+            String id = ids.obtener(i);
+            Lista<GrafoRed.Arista> ady = grafo.obtenerAdyacentes(id);
+            int grado = ady.getTamano();
+            if (grado > maxConexiones) {
+                maxConexiones = grado;
+                maxHub = id;
+            }
+        }
+        Estacion est = grafo.obtenerEstacion(maxHub);
+        return est != null ? est.getNombre() + " (Grado: " + maxConexiones + ")" : "Ninguno";
+    }
+
+    /**
+     * Implementación del algoritmo de Dijkstra para encontrar la ruta de menor tiempo entre dos estaciones.
+     */
+    public static String calcularRutaDijkstra(GrafoRed grafo, String idOrigen, String idDestino) {
+        Lista<String> ids = grafo.getIdsEstaciones();
+        if (grafo.obtenerEstacion(idOrigen) == null || grafo.obtenerEstacion(idDestino) == null) {
+            return "Error: La estación de origen o destino no es válida.";
         }
 
-        boolean[] visitado = new boolean[n];
-        int[] pila = new int[n];
-        String[] resultado = new String[n];
+        // Tablas auxiliares simuladas con TablaHashEstaciones para distancias y predecesores
+        TablaHashEstaciones tablaDistancias = new TablaHashEstaciones();
+        TablaHashEstaciones tablaPredecesores = new TablaHashEstaciones();
+        TablaHashEstaciones visitados = new TablaHashEstaciones();
 
-        int cima = 0;
-        int posicion = 0;
+        // Inicializar distancias a "infinito" (representado por un número grande, ej: 999999)
+        for (int i = 0; i < ids.getTamano(); i++) {
+            String id = ids.obtener(i);
+            // Creamos un objeto Estacion temporal donde capacidadPasajerosHora almacena la distancia acumulada
+            int distInicial = id.equals(idOrigen) ? 0 : 999999;
+            tablaDistancias.insertar(id, new Estacion(id, id, "", "", distInicial));
+        }
 
-        pila[cima++] = inicio;
+        while (true) {
+            // Encontrar el nodo no visitado con la menor distancia actual
+            String nodoActual = null;
+            int menorDistancia = 999999;
 
-        while (cima > 0) {
-            int actual = pila[--cima];
-
-            if (!visitado[actual]) {
-                visitado[actual] = true;
-                resultado[posicion++] = grafo.getEstacion(actual).getNombre();
-
-                for (int i = n - 1; i >= 0; i--) {
-                    if (grafo.getPeso(actual, i) != Double.POSITIVE_INFINITY
-                            && !visitado[i]) {
-                        pila[cima++] = i;
+            for (int i = 0; i < ids.getTamano(); i++) {
+                String id = ids.obtener(i);
+                if (visitados.buscar(id) == null) {
+                    Estacion estDist = tablaDistancias.buscar(id);
+                    if (estDist != null && estDist.getCapacidadPasajerosHora() < menorDistancia) {
+                        menorDistancia = estDist.getCapacidadPasajerosHora();
+                        nodoActual = id;
                     }
                 }
             }
-        }
 
-        return copiarResultado(resultado, posicion);
-    }
+            // Si no hay nodo accesible o llegamos a infinito, terminamos
+            if (nodoActual == null || menorDistancia == 999999) break;
 
-    public double[] dijkstra(String idInicio) {
-        int inicio = grafo.buscarIndice(idInicio);
-        int n = grafo.getCantidad();
+            // Si llegamos al destino, podemos detenernos
+            if (nodoActual.equals(idDestino)) break;
 
-        double[] distancias = new double[n];
-        boolean[] visitado = new boolean[n];
+            visitados.insertar(nodoActual, grafo.obtenerEstacion(nodoActual));
 
-        for (int i = 0; i < n; i++) {
-            distancias[i] = Double.POSITIVE_INFINITY;
-        }
+            // Relajar aristas vecinas
+            Lista<GrafoRed.Arista> adyacentes = grafo.obtenerAdyacentes(nodoActual);
+            Nodo<GrafoRed.Arista> aNode = adyacentes.getCabeza();
+            while (aNode != null) {
+                GrafoRed.Arista arista = aNode.getDato();
+                String vecino = arista.destinoId;
+                int peso = arista.pesoMinutos;
 
-        if (inicio == -1) {
-            return distancias;
-        }
+                Estacion estDistVecino = tablaDistancias.buscar(vecino);
+                Estacion estDistActual = tablaDistancias.buscar(nodoActual);
 
-        distancias[inicio] = 0;
-
-        for (int i = 0; i < n; i++) {
-            int actual = -1;
-            double menor = Double.POSITIVE_INFINITY;
-
-            for (int j = 0; j < n; j++) {
-                if (!visitado[j] && distancias[j] < menor) {
-                    menor = distancias[j];
-                    actual = j;
+                if (estDistVecino != null && estDistActual != null) {
+                    int nuevaDist = estDistActual.getCapacidadPasajerosHora() + peso;
+                    if (nuevaDist < estDistVecino.getCapacidadPasajerosHora()) {
+                        estDistVecino.setCapacidadPasajerosHora(nuevaDist);
+                        // Guardamos el predecesor almacenando el ID en la zona de la estación predecesora
+                        tablaPredecesores.insertar(vecino, new Estacion(vecino, nodoActual, "", "", 0));
+                    }
                 }
-            }
-
-            if (actual == -1) {
-                break;
-            }
-
-            visitado[actual] = true;
-
-            for (int j = 0; j < n; j++) {
-                double peso = grafo.getPeso(actual, j);
-
-                if (!visitado[j] && peso != Double.POSITIVE_INFINITY
-                        && distancias[actual] + peso < distancias[j]) {
-                    distancias[j] = distancias[actual] + peso;
-                }
+                aNode = aNode.getSiguiente();
             }
         }
 
-        return distancias;
-    }
-
-    public int[] calcularCentralidad() {
-        int n = grafo.getCantidad();
-        int[] centralidad = new int[n];
-
-        for (int i = 0; i < n; i++) {
-            int grado = 0;
-
-            for (int j = 0; j < n; j++) {
-                if (grafo.getPeso(i, j) != Double.POSITIVE_INFINITY) {
-                    grado++;
-                }
-
-                if (grafo.getPeso(j, i) != Double.POSITIVE_INFINITY) {
-                    grado++;
-                }
-            }
-
-            centralidad[i] = grado;
+        // Verificar si se encontró ruta al destino
+        Estacion estDestinoDist = tablaDistancias.buscar(idDestino);
+        if (estDestinoDist == null || estDestinoDist.getCapacidadPasajerosHora() >= 999999) {
+            return "No existe ruta conectada entre " + idOrigen + " y " + idDestino + ".";
         }
 
-        return centralidad;
-    }
+        // Reconstruir la ruta paso a paso desde el destino hasta el origen
+        StringBuilder ruta = new StringBuilder();
+        String actual = idDestino;
+        int tiempoTotal = estDestinoDist.getCapacidadPasajerosHora();
 
-    public Estacion obtenerEstacionMayorCentralidad() {
-        int[] centralidad = calcularCentralidad();
-
-        if (centralidad.length == 0) {
-            return null;
+        while (actual != null && !actual.equals(idOrigen)) {
+            Estacion estObj = grafo.obtenerEstacion(actual);
+            ruta.insert(0, " -> " + (estObj != null ? estObj.getNombre() : actual));
+            Estacion pred = tablaPredecesores.buscar(actual);
+            actual = (pred != null) ? pred.getNombre() : null;
         }
+        
+        Estacion estOrgObj = grafo.obtenerEstacion(idOrigen);
+        ruta.insert(0, (estOrgObj != null ? estOrgObj.getNombre() : idOrigen));
 
-        int mayor = 0;
-
-        for (int i = 1; i < centralidad.length; i++) {
-            if (centralidad[i] > centralidad[mayor]) {
-                mayor = i;
-            }
-        }
-
-        return grafo.getEstacion(mayor);
-    }
-
-    private String[] copiarResultado(String[] original, int cantidad) {
-        String[] resultado = new String[cantidad];
-
-        for (int i = 0; i < cantidad; i++) {
-            resultado[i] = original[i];
-        }
-
-        return resultado;
+        return "Tiempo total estimado: " + tiempoTotal + " minutos.\nTrayecto:\n" + ruta.toString();
     }
 }
