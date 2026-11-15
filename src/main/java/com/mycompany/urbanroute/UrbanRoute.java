@@ -4,13 +4,17 @@
 
 package com.mycompany.urbanroute;
 
+import javax.swing.SwingUtilities;
+
 /**
  *
  * @author hluis
  */
 public class UrbanRoute {
-
+    
     public static void main(String[] args) {
-        System.out.println("Hello World!");
+        java.awt.EventQueue.invokeLater(() -> {
+            new InterfazUsuario().setVisible(true);
+        });
     }
 }
