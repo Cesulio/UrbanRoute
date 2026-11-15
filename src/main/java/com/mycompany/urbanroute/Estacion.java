@@ -36,25 +36,35 @@ public class Estacion {
 
     // Métodos para consultar los atributos
 
-    public String getId() {
+    public String getid() {
         return id;
     }
-
+    
+    public void setid(String id) { this.id = id; }
+    
     public String getNombre() {
         return nombre;
     }
 
+    public void setNombre(String nombre) { this.nombre = nombre; }
+    
     public String getLinea() {
         return linea;
     }
+    
+    public void setLinea(String linea) { this.linea = linea; }
 
     public String getZona() {
         return zona;
     }
+    
+    public void setZona(String zona) { this.zona = zona; }
 
     public int getCapacidadPasajerosHora() {
         return capacidadPasajerosHora;
     }
+    
+    public void setCapacidadPasajerosHora(int capacidadPasajerosHora) { this.capacidadPasajerosHora = capacidadPasajerosHora; }
 
     /**
      * Devuelve la información de la estación.
@@ -63,12 +73,6 @@ public class Estacion {
      */
     @Override
     public String toString() {
-        return "Estacion{" +
-                "id='" + id + '\'' +
-                ", nombre='" + nombre + '\'' +
-                ", linea='" + linea + '\'' +
-                ", zona='" + zona + '\'' +
-                ", capacidadPasajerosHora=" + capacidadPasajerosHora +
-                '}';
+        return nombre + "(" + id + ") - " + linea;
     }
 }
