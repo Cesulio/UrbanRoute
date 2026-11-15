@@ -1,97 +1,98 @@
-
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package com.mycompany.urbanroute;
 
+/**
+ *
+ * @author hluis
+ */
 public class TablaHashEstaciones {
+    private static final int CAPACIDAD_INICIAL = 53;
+    private Lista<EntradaHash>[] tabla;
+    private int elementos;
 
-    private Estacion[] tabla;
-    private int cantidad;
+    private static class EntradaHash {
+        String clave;
+        Estacion estacion;
 
+        public EntradaHash(String clave, Estacion estacion) {
+            this.clave = clave;
+            this.estacion = estacion;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof EntradaHash) {
+                return this.clave.equals(((EntradaHash) obj).clave);
+            }
+            return false;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
     public TablaHashEstaciones() {
-        tabla = new Estacion[11];
-        cantidad = 0;
+        tabla = new Lista[CAPACIDAD_INICIAL];
+        for (int i = 0; i < CAPACIDAD_INICIAL; i++) {
+            tabla[i] = new Lista<>();
+        }
+        elementos = 0;
     }
 
-    private int funcionHash(String id) {
-        return Math.abs(id.hashCode() % tabla.length);
+    private int funcionHash(String clave) {
+        int hash = 7;
+        for (int i = 0; i < clave.length(); i++) {
+            hash = hash * 31 + clave.charAt(i);
+        }
+        return Math.abs(hash) % tabla.length;
     }
 
-    public boolean insertar(Estacion estacion) {
-        if (estacion == null || estacion.getId() == null) {
-            return false;
-        }
-
-        if (buscar(estacion.getId()) != null) {
-            return false;
-        }
-
-        if ((cantidad + 1.0) / tabla.length > 0.7) {
-            redimensionar();
-        }
-
-        int indice = funcionHash(estacion.getId());
-
-        while (tabla[indice] != null) {
-            indice = (indice + 1) % tabla.length;
-        }
-
-        tabla[indice] = estacion;
-        cantidad++;
-        return true;
-    }
-
-    public Estacion buscar(String id) {
-        if (id == null) {
-            return null;
-        }
-
-        int indice = funcionHash(id);
-        int inicio = indice;
-
-        while (tabla[indice] != null) {
-            if (tabla[indice].getId().equals(id)) {
-                return tabla[indice];
+    public void insertar(String clave, Estacion estacion) {
+        int indice = funcionHash(clave);
+        Lista<EntradaHash> bucket = tabla[indice];
+        
+        // Verificar si ya existe para actualizar
+        Nodo<EntradaHash> actual = bucket.getCabeza();
+        while (actual != null) {
+            if (actual.getDato().clave.equals(clave)) {
+                actual.getDato().estacion = estacion;
+                return;
             }
-
-            indice = (indice + 1) % tabla.length;
-
-            if (indice == inicio) {
-                break;
-            }
+            actual = actual.getSiguiente();
         }
 
+        bucket.insertar(new EntradaHash(clave, estacion));
+        elementos++;
+    }
+
+    public Estacion buscar(String clave) {
+        int indice = funcionHash(clave);
+        Lista<EntradaHash> bucket = tabla[indice];
+        Nodo<EntradaHash> actual = bucket.getCabeza();
+        while (actual != null) {
+            if (actual.getDato().clave.equals(clave)) {
+                return actual.getDato().estacion;
+            }
+            actual = actual.getSiguiente();
+        }
         return null;
     }
 
-    private void redimensionar() {
-        Estacion[] anterior = tabla;
-        tabla = new Estacion[anterior.length * 2 + 1];
-        cantidad = 0;
-
-        for (Estacion estacion : anterior) {
-            if (estacion != null) {
-                insertar(estacion);
+    public boolean eliminar(String clave) {
+        int indice = funcionHash(clave);
+        Lista<EntradaHash> bucket = tabla[indice];
+        Nodo<EntradaHash> actual = bucket.getCabeza();
+        while (actual != null) {
+            if (actual.getDato().clave.equals(clave)) {
+                bucket.eliminar(actual.getDato());
+                elementos--;
+                return true;
             }
+            actual = actual.getSiguiente();
         }
+        return false;
     }
 
-    public int getCantidad() {
-        return cantidad;
-    }
-
-    public boolean estaVacia() {
-        return cantidad == 0;
-    }
-
-    public Estacion[] obtenerEstaciones() {
-        Estacion[] resultado = new Estacion[cantidad];
-        int posicion = 0;
-
-        for (Estacion estacion : tabla) {
-            if (estacion != null) {
-                resultado[posicion++] = estacion;
-            }
-        }
-
-        return resultado;
-    }
+    public int getElementos() { return elementos; }
 }
